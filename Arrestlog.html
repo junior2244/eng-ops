@@ -3,86 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star Trek Engineering RP Hub</title>
+    <title>Star Trek Engineering Advanced RP Console</title>
     <style>
+        :root {
+            --lcars-orange: #ffcc00;
+            --lcars-blue: #99ccff;
+            --lcars-purple: #cc99cc;
+        }
         body {
             background-color: #000;
-            color: #ffcc00;
+            color: var(--lcars-orange);
             font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 20px;
+            background-image: radial-gradient(circle, #001433 0%, #000000 100%);
         }
         .console {
-            background-color: #111;
-            border: 2px solid #ffcc00;
+            background-color: rgba(17, 17, 17, 0.9);
+            border: 2px solid var(--lcars-orange);
             border-radius: 10px;
             padding: 20px;
             margin: 20px 0;
+            box-shadow: 0 0 15px var(--lcars-orange);
         }
         .button {
-            background-color: #ffcc00;
+            background-color: var(--lcars-orange);
             color: #000;
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             margin: 5px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background-color: var(--lcars-blue);
+            transform: scale(1.05);
         }
         .alert {
             color: red;
             font-weight: bold;
+            animation: blink 2s infinite;
+        }
+        .warp-core {
+            height: 200px;
+            background: linear-gradient(var(--lcars-blue), var(--lcars-purple));
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .warp-pulse {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            animation: pulse 2s infinite;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        @keyframes pulse {
+            0% { top: -20px; }
+            100% { top: 200px; }
+        }
+        .gauge {
+            width: 150px;
+            height: 150px;
+            display: inline-block;
+            border: 3px solid var(--lcars-orange);
+            border-radius: 50%;
+            position: relative;
+            margin: 10px;
+        }
+        .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+        }
+        #ship-schematic {
+            width: 100%;
+            height: 300px;
+            border: 2px solid var(--lcars-blue);
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <h1>🚀 USS Enterprise Engineering Deck</h1>
+    <h1>🚀 USS Enterprise Engineering Control Center</h1>
     
     <div class="console">
-        <h2>Current Status</h2>
-        <p>Warp Core Efficiency: 87%</p>
-        <p>Shield Generator Status: Operational</p>
-        <p class="alert">⚠️ Plasma Conduit Leak Detected on Deck 15</p>
+        <h2>Warp Core Status</h2>
+        <div class="warp-core">
+            <div class="warp-pulse"></div>
+        </div>
+        <div id="warp-stats"></div>
     </div>
 
     <div class="console">
-        <h2>Engineering Tasks</h2>
-        <button class="button" onclick="alert('Initiating warp core diagnostic...')">Run Warp Core Diagnostic</button>
-        <button class="button" onclick="alert('Realigning dilithium crystals...')">Realign Dilithium Crystals</button>
-        <button class="button" onclick="alert('Scanning for plasma leaks...')">Scan for Plasma Leaks</button>
-        <button class="button" onclick="alert('Adjusting matter/antimatter ratio...')">Adjust Matter/Antimatter Ratio</button>
+        <h2>System Gauges</h2>
+        <div class="gauge">
+            <div class="gauge-value" id="shield-power">100%</div>
+            <div>Shields</div>
+        </div>
+        <div class="gauge">
+            <div class="gauge-value" id="warp-power">87%</div>
+            <div>Warp</div>
+        </div>
+        <div class="gauge">
+            <div class="gauge-value" id="life-support">98%</div>
+            <div>Life Support</div>
+        </div>
+    </div>
+
+    <div class="console">
+        <h2>Engineering Controls</h2>
+        <button class="button" onclick="initiateWarpCore()">Initiate Warp Core</button>
+        <button class="button" onclick="modifyShields()">Modify Shield Harmonics</button>
+        <button class="button" onclick="emergencyPower()">Emergency Power</button>
+        <button class="button" onclick="startDiagnostic()">Full System Diagnostic</button>
+    </div>
+
+    <div class="console">
+        <h2>Ship Schematic</h2>
+        <canvas id="ship-schematic"></canvas>
+        <div id="damage-report"></div>
     </div>
 
     <div class="console">
         <h2>Engineering Log</h2>
-        <form>
-            <textarea rows="4" cols="50" placeholder="Enter your engineering log entry..."></textarea><br>
-            <button class="button" type="submit">Submit Log Entry</button>
-        </form>
-    </div>
-
-    <div class="console">
-        <h2>Emergency Procedures</h2>
-        <ul>
-            <li>Core Breach Protocol</li>
-            <li>Emergency Power Rerouting</li>
-            <li>Shield Modulation Sequence</li>
-            <li>Jefferies Tube Navigation Map</li>
-        </ul>
+        <div id="log-entries"></div>
+        <input type="text" id="log-input" placeholder="Enter log entry...">
+        <button class="button" onclick="submitLog()">Submit Log</button>
     </div>
 
     <script>
-        function randomAlert() {
-            const alerts = [
-                "Warning: Coolant leak detected!",
-                "Plasma injectors operating at 65% efficiency",
-                "Shield harmonics fluctuating",
-                "Incoming transmission from Engineering Team Beta"
-            ];
-            setInterval(() => {
-                alert(alerts[Math.floor(Math.random() * alerts.length)]);
-            }, 120000);
+        // Dynamic Systems Management
+        let systemStatus = {
+            warpCore: 87,
+            shields: 100,
+            lifeSupport: 98,
+            damage: []
+        };
+
+        function initiateWarpCore() {
+            const warpSequence = ['Initializing matter/antimatter reaction', 
+                                'Stabilizing dilithium matrix',
+                                'Engaging plasma conduits',
+                                'Warp core online!'];
+            
+            warpSequence.forEach((step, index) => {
+                setTimeout(() => {
+                    updateLog(step);
+                    if(index === warpSequence.length-1) {
+                        systemStatus.warpCore = 100;
+                        updateGauges();
+                    }
+                }, index * 1000);
+            });
         }
-        randomAlert();
+
+        function modifyShields() {
+            const frequencies = ['Alpha', 'Beta', 'Delta', 'Gamma'];
+            const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
+            updateLog(`Modifying shield harmonics to ${frequency} frequency`);
+            systemStatus.shields = Math.min(100, systemStatus.shields + 10);
+            updateGauges();
+        }
+
+        function emergencyPower() {
+            updateLog('🚨 EMERGENCY POWER TO SYSTEMS');
+            Object.keys(systemStatus).forEach(key => {
+                if(typeof systemStatus[key] === 'number') {
+                    systemStatus[key] = Math.min(120, systemStatus[key] + 20);
+                }
+            });
+            updateGauges();
+        }
+
+        function startDiagnostic() {
+            updateLog('Starting full system diagnostic...');
+            const systems = ['Warp Core', 'Shield Generator', 'Life Support', 'Weapons', 'Sensors'];
+            systems.forEach((system, index) => {
+                setTimeout(() => {
+                    const status = Math.random() > 0.7 ? 'Issues Detected' : 'Nominal';
+                    updateLog(`${system} Status: ${status}`);
+                }, index * 1000);
+            });
+        }
+
+        function updateLog(message) {
+            const log = document.getElementById('log-entries');
+            const entry = document.createElement('p');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.insertBefore(entry, log.firstChild);
+        }
+
+        function updateGauges() {
+            document.getElementById('shield-power').textContent = `${systemStatus.shields}%`;
+            document.getElementById('warp-power').textContent = `${systemStatus.warpCore}%`;
+            document.getElementById('life-support').textContent = `${systemStatus.lifeSupport}%`;
+        }
+
+        function submitLog() {
+            const input = document.getElementById('log-input');
+            if(input.value.trim()) {
+                updateLog(`Engineer's Log: ${input.value}`);
+                input.value = '';
+            }
+        }
+
+        // Random Events System
+        setInterval(() => {
+            const events = [
+                'Plasma conduit breach detected',
+                'Power fluctuation in jefferies tube 47',
+                'Coolant pressure dropping',
+                'Shield harmonics out of phase',
+                'Warp core temperature spike'
+            ];
+            if(Math.random() > 0.7) {
+                const event = events[Math.floor(Math.random() * events.length)];
+                updateLog(`⚠️ ${event}`);
+                systemStatus.warpCore -= Math.floor(Math.random() * 10);
+                systemStatus.shields -= Math.floor(Math.random() * 5);
+                updateGauges();
+            }
+        }, 10000);
+
+        // Initialize ship schematic
+        const canvas = document.getElementById('ship-schematic');
+        const ctx = canvas.getContext('2d');
+        
+        function drawSchematic() {
+            // Add ship drawing code here
+            ctx.strokeStyle = '#99ccff';
+            ctx.beginPath();
+            ctx.moveTo(50, 150);
+            ctx.lineTo(250, 150);
+            ctx.lineTo(300, 100);
+            ctx.stroke();
+        }
+
+        // Initialize systems
+        updateGauges();
+        drawSchematic();
     </script>
 </body>
 </html>
